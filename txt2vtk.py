@@ -16,14 +16,22 @@ print("Width: " + str(width))
 
 vtkPoints = vtk.vtkPoints()
 
+vtkScalars = vtk.vtkFloatArray()
 for y in range(height):
     for x, zCoord in enumerate(f.readline().split()):
-        vtkPoints.InsertNextPoint(x, y, int(zCoord))
+        vtkPoints.InsertNextPoint(x, y, float(zCoord) / 50)
+        vtkScalars.InsertNextValue(float(zCoord))
 f.close()
+
+# En plus de la géométrie, il faut associer un attribut scalaire aux points de la structure qui stocke l'altitude et permettra de la colorier dans l'affichage. Cela se fait via la méthode getPointData() du dataset, qui retourne un vtkPointData dont on utilise la méthode setScalars().
+
+
+
 
 vtkStructuredGrid = vtk.vtkStructuredGrid()
 vtkStructuredGrid.SetDimensions(width, height, 1)
 vtkStructuredGrid.SetPoints(vtkPoints)
+vtkStructuredGrid.GetPointData().SetScalars(vtkScalars)
 vtkStructuredGrid.Modified()
 
 print("Writing file: " + destFile)
@@ -33,7 +41,3 @@ writer.SetInputData(vtkStructuredGrid)
 writer.Write()
 
 print("Done, Have a nice day! XoXo :D")
-
-
-
-

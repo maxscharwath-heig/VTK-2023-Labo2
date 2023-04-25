@@ -19,33 +19,38 @@ from vtkmodules.vtkRenderingCore import (
     vtkRenderer
 )
 
+
 def readStructuredGrid():
     reader = vtk.vtkStructuredGridReader()
     reader.SetFileName("altitudes.vtk")
     reader.Update()
     return reader.GetOutput()
-    # output.GetScalarRange()
+
+
+def createLUT():
+    lut = vtk.vtkLookupTable()
+    lut.SetNumberOfColors(256)
+    lut.SetHueRange(0.0, 0.667)
+    lut.SetSaturationRange(1.0, 1.0)  # Définir la plage de saturation
+    lut.SetValueRange(0.2, 1.0)  # Définir la plage de valeur
+    lut.SetAlphaRange(1.0, 1.0)
+    lut.Build()
+    return lut
 
 
 def main():
-    colors = vtkNamedColors()
     output = readStructuredGrid()
+    colors = vtkNamedColors()
+    lut = createLUT()
 
     mapper = vtk.vtkDataSetMapper()
     mapper.SetInputData(output)
-    # mapper.SetScalarRange(scalar_range)
-    mapper.ScalarVisibilityOff()
+    mapper.SetLookupTable(lut)
+    mapper.SetScalarRange(output.GetPointData().GetScalars().GetRange())
 
     # Create the Actor
     actor = vtk.vtkActor()
     actor.SetMapper(mapper)
-    actor.GetProperty().EdgeVisibilityOn()
-    actor.GetProperty().SetLineWidth(2.0)
-    actor.GetProperty().SetColor(colors.GetColor3d("MistyRose"))
-
-    backface = vtk.vtkProperty()
-    backface.SetColor(colors.GetColor3d('Tomato'))
-    actor.SetBackfaceProperty(backface)
 
     # Create the Renderer
     renderer = vtk.vtkRenderer()
@@ -58,8 +63,18 @@ def main():
     renderer_window.AddRenderer(renderer)
     renderer_window.SetWindowName('ReadstructuredGrid')
 
+    # Center the window
+    screen_size = renderer_window.GetScreenSize()
+    window_size = renderer_window.GetSize()
+
+    renderer_window.SetPosition(
+        int((screen_size[0] - window_size[0]) / 2),
+        int((screen_size[1] - window_size[1]) / 2)
+    )
+
     # Create the RendererWindowInteractor and display the vtk_file
     interactor = vtk.vtkRenderWindowInteractor()
+    interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
     interactor.SetRenderWindow(renderer_window)
     interactor.Initialize()
     interactor.Start()
