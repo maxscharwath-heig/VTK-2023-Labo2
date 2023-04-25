@@ -1,5 +1,7 @@
 import vtk
 import sys
+import math
+
 # How to use: python txt2vtk.py input.txt output.vtk
 
 sourceFile = sys.argv[1]
@@ -15,18 +17,54 @@ print("Height: " + str(height))
 print("Width: " + str(width))
 
 vtkPoints = vtk.vtkPoints()
-
 vtkScalars = vtk.vtkFloatArray()
+
+# Constants for conversion
+RADIUS_EARTH = 6371009.0
+DEG_TO_RAD = math.pi / 180.0
+
+min_lat, max_lat = 45.0, 47.5
+min_lon, max_lon = 5.0, 7.5
+
+delta_lat_degrees = (max_lat - min_lat) / (height - 1)
+delta_lon_degrees = (max_lon - min_lon) / (width - 1)
+
+previousAltitudes = []
+
+
+def findLakeAltitude(altitude, num):
+    if len(previousAltitudes) < num:
+        previousAltitudes.append(altitude)
+        return
+    # use pop
+    for i in range(num):
+        if previousAltitudes.pop(0) != altitude:
+            previousAltitudes.append(altitude)
+            return
+    print("Found lake at altitude: " + str(altitude))
+
+maxAltitude = 0
+
 for y in range(height):
     for x, zCoord in enumerate(f.readline().split()):
-        vtkPoints.InsertNextPoint(x, y, float(zCoord) / 50)
-        vtkScalars.InsertNextValue(float(zCoord))
+        zCoord = float(zCoord)
+        # findLakeAltitude(zCoord, 200) # found 370
+        maxAltitude = max(maxAltitude, zCoord)  # found 4783
+        vtkScalars.InsertNextValue(zCoord)
+
+        # Latitude and Longitude to Cartesian
+        lat = min_lat + y * delta_lat_degrees
+        lon = min_lon + x * delta_lon_degrees
+        lat_rad = lat * DEG_TO_RAD
+        lon_rad = lon * DEG_TO_RAD
+        x_coord = RADIUS_EARTH * math.cos(lat_rad) * math.cos(lon_rad)
+        y_coord = RADIUS_EARTH * math.cos(lat_rad) * math.sin(lon_rad)
+        z_coord = (RADIUS_EARTH + zCoord) * math.sin(lat_rad)
+
+        vtkPoints.InsertNextPoint(x_coord, y_coord, z_coord)
+
 f.close()
-
-# En plus de la géométrie, il faut associer un attribut scalaire aux points de la structure qui stocke l'altitude et permettra de la colorier dans l'affichage. Cela se fait via la méthode getPointData() du dataset, qui retourne un vtkPointData dont on utilise la méthode setScalars().
-
-
-
+print("Max altitude: " + str(maxAltitude))
 
 vtkStructuredGrid = vtk.vtkStructuredGrid()
 vtkStructuredGrid.SetDimensions(width, height, 1)
