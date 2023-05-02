@@ -30,21 +30,27 @@ delta_lat_degrees = (max_lat - min_lat) / (height - 1)
 delta_lon_degrees = (max_lon - min_lon) / (width - 1)
 
 
-def is_lake(points, x, y, threshold=0.5):
+def is_lake(points, x, y, threshold=1e-6, neighbor_range=2):
     z = points[y][x][2]
-    neighbors = [
-        (x - 1, y),
-        (x + 1, y),
-        (x, y - 1),
-        (x, y + 1),
-    ]
 
-    for nx, ny in neighbors:
-        if 0 <= nx < width and 0 <= ny < height:
-            neighbor_z = points[ny][nx][2]
-            if abs(z - neighbor_z) > threshold:
-                return False
-    return True
+    neighbor_count = 0
+    total_height = 0
+
+    for i in range(-neighbor_range, neighbor_range + 1):
+        for j in range(-neighbor_range, neighbor_range + 1):
+            if i == 0 and j == 0:
+                continue
+
+            nx, ny = x + i, y + j
+
+            if 0 <= nx < width and 0 <= ny < height:
+                neighbor_count += 1
+                total_height += points[ny][nx][2]
+
+    average_height = total_height / neighbor_count
+
+    return abs(z - average_height) <= threshold
+
 
 
 maxAltitude = 0
