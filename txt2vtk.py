@@ -57,8 +57,8 @@ for y in range(height):
         lon = min_lon + x * delta_lon_degrees
         lat_rad = lat * DEG_TO_RAD
         lon_rad = lon * DEG_TO_RAD
-        x_coord = RADIUS_EARTH * math.cos(lat_rad) * math.cos(lon_rad)
-        y_coord = RADIUS_EARTH * math.cos(lat_rad) * math.sin(lon_rad)
+        x_coord = (RADIUS_EARTH + zCoord) * math.cos(lat_rad) * math.sin(lon_rad)
+        y_coord = (RADIUS_EARTH + zCoord) * math.cos(lat_rad) * math.cos(lon_rad)
         z_coord = (RADIUS_EARTH + zCoord) * math.sin(lat_rad)
 
         vtkPoints.InsertNextPoint(x_coord, y_coord, z_coord)
