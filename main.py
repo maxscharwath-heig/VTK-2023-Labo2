@@ -1,4 +1,5 @@
 import vtk
+import math
 
 #!/usr/bin/env python
 
@@ -23,6 +24,12 @@ from vtkmodules.vtkRenderingCore import (
 
 waterLevel = 370.0
 maxAltitude = 4783.0
+RADIUS_EARTH = 6371009.0
+
+CENTER_LAT = 46.25
+CENTER_LON = 6.25
+
+46.779202680783875, 6.659417554443048
 
 def readStructuredGrid():
     reader = vtk.vtkStructuredGridReader()
@@ -58,10 +65,42 @@ def main():
     actor = vtk.vtkActor()
     actor.SetMapper(mapper)
 
+    # Create Earth sphere
+    earth_sphere = vtk.vtkSphereSource()
+    earth_sphere.SetRadius(RADIUS_EARTH)
+    earth_sphere.SetThetaResolution(100)
+    earth_sphere.SetPhiResolution(100)
+
+    # Create Earth sphere mapper
+    earth_mapper = vtk.vtkPolyDataMapper()
+    earth_mapper.SetInputConnection(earth_sphere.GetOutputPort())
+
+    # Create Earth sphere actor
+    earth_actor = vtk.vtkActor()
+    earth_actor.SetMapper(earth_mapper)
+    earth_actor.GetProperty().SetColor(0.0, 0.5, 1.0)
+    earth_actor.GetProperty().SetOpacity(0.5)  # Set Earth opacity
+
+    # Calculate the camera's center of rotation
+
+    center_lat_rad = math.radians(CENTER_LAT)
+    center_lon_rad = math.radians(CENTER_LON)
+
+    x_center = RADIUS_EARTH * math.cos(center_lat_rad) * math.sin(center_lon_rad)
+    y_center = RADIUS_EARTH * math.cos(center_lat_rad) * math.cos(center_lon_rad)
+    z_center = RADIUS_EARTH * math.sin(center_lat_rad)
+
     # Create the Renderer
     renderer = vtk.vtkRenderer()
     renderer.AddActor(actor)
+    renderer.AddActor(earth_actor)  # Add Earth sphere actor to the renderer
     renderer.SetBackground(colors.GetColor3d('Wheat'))
+
+    # Set the camera's position, focal point, and view up direction
+    camera = renderer.GetActiveCamera()
+    camera.SetPosition(x_center, y_center, z_center + RADIUS_EARTH / 2)
+    camera.SetFocalPoint(x_center, y_center, z_center)
+    camera.SetViewUp(0, 1, 0)
 
     # Create the RendererWindow
     renderer_window = vtk.vtkRenderWindow()
