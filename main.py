@@ -19,6 +19,10 @@ from vtkmodules.vtkRenderingCore import (
     vtkRenderer
 )
 
+# constants
+
+waterLevel = 370.0
+maxAltitude = 4783.0
 
 def readStructuredGrid():
     reader = vtk.vtkStructuredGridReader()
@@ -28,13 +32,24 @@ def readStructuredGrid():
 
 
 def createLUT():
-    lut = vtk.vtkLookupTable()
-    lut.SetNumberOfColors(256)
-    lut.SetHueRange(0.0, 0.667)
-    lut.SetSaturationRange(1.0, 1.0)  # Définir la plage de saturation
-    lut.SetValueRange(0.2, 1.0)  # Définir la plage de valeur
-    lut.SetAlphaRange(1.0, 1.0)
+    # Blue to white lut
+    # lut = vtk.vtkColorTransferFunction()
+    # lut.AddRGBPoint(370, 0, 0, 1)  # Rouge pour la valeur 0
+    # lut.AddRGBPoint(500, 0, 1, 0)  # Vert pour la valeur 0.5
+    # lut.AddRGBPoint(1000, 0.6, 0.4, 0)  # Bleu pour la valeur 1
+    # lut.AddRGBPoint(3000, 1, 1, 1)  # Jaune pour la valeur 1.5
+    lut = vtk.vtkColorTransferFunction()
+    lut.AddRGBPoint(0, 0.2, 0, 1) # Lac
+    lut.AddRGBPoint(400, 0.361, 0.722, 0.361)
+    lut.AddRGBPoint(500, 0.612, 0.427, 0.341)
+    lut.AddRGBPoint(900, 0.612, 0.427, 0.341)
+    lut.AddRGBPoint(1600, 1, 1, 1)
+
+    # lut.SetRange(0, maxAltitude)
+    # Set the number of colors in the lookup table
+    # lut.SetNumberOfTableValues(4)
     lut.Build()
+
     return lut
 
 
