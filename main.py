@@ -29,8 +29,6 @@ RADIUS_EARTH = 6371009.0
 CENTER_LAT = 46.25
 CENTER_LON = 6.25
 
-46.779202680783875, 6.659417554443048
-
 def readStructuredGrid():
     reader = vtk.vtkStructuredGridReader()
     reader.SetFileName("altitudes.vtk")
