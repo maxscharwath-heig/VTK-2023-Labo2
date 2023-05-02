@@ -35,22 +35,22 @@ previousAltitudes = []
 def findLakeAltitude(altitude, num):
     if len(previousAltitudes) < num:
         previousAltitudes.append(altitude)
-        return
+        return False
     # use pop
     for i in range(num):
         if previousAltitudes.pop(0) != altitude:
             previousAltitudes.append(altitude)
-            return
-    print("Found lake at altitude: " + str(altitude))
+            return False
+        return True
 
 maxAltitude = 0
 
 for y in range(height):
     for x, zCoord in enumerate(f.readline().split()):
         zCoord = float(zCoord)
-        # findLakeAltitude(zCoord, 200) # found 370
+        isLake = findLakeAltitude(zCoord, 3)
         maxAltitude = max(maxAltitude, zCoord)  # found 4783
-        vtkScalars.InsertNextValue(zCoord)
+        vtkScalars.InsertNextValue(zCoord if not isLake else 0)
 
         # Latitude and Longitude to Cartesian
         lat = min_lat + y * delta_lat_degrees
