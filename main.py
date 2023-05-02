@@ -32,39 +32,13 @@ def readStructuredGrid():
 
 
 def createLUT():
-    # Blue to white lut
-    # lut = vtk.vtkColorTransferFunction()
-    # lut.AddRGBPoint(370, 0, 0, 1)  # Rouge pour la valeur 0
-    # lut.AddRGBPoint(500, 0, 1, 0)  # Vert pour la valeur 0.5
-    # lut.AddRGBPoint(1000, 0.6, 0.4, 0)  # Bleu pour la valeur 1
-    # lut.AddRGBPoint(3000, 1, 1, 1)  # Jaune pour la valeur 1.5
     lut = vtk.vtkColorTransferFunction()
 
-    lut.AddRGBPoint(0, 1, 0, 0)
-
-    lut.AddRGBPoint(421, 0.15, 0.32, 0.14)
-    lut.AddRGBPoint(422, 0.513, 0.49, 1) # Lac
-    lut.AddRGBPoint(423, 0.15, 0.32, 0.14)
-
-    lut.AddRGBPoint(424, 0.15, 0.32, 0.14)
-    lut.AddRGBPoint(425, 0.513, 0.49, 1) # Lac
-    lut.AddRGBPoint(426, 0.15, 0.32, 0.14)
-
-    lut.AddRGBPoint(229, 0.15, 0.32, 0.14)
-    lut.AddRGBPoint(230, 0.513, 0.49, 1) # Lac
-    lut.AddRGBPoint(231, 0.15, 0.32, 0.14)
-
-    lut.AddRGBPoint(369, 0.15, 0.32, 0.14)
-    lut.AddRGBPoint(370, 0.513, 0.49, 1) # Lac
-    lut.AddRGBPoint(371, 0.15, 0.32, 0.14) 
-    # lut.AddRGBPoint(400, 0.361, 0.722, 0.361)
+    lut.AddRGBPoint(0, 0.513, 0.49, 1) # Lacs
+    lut.AddRGBPoint(1, 0.15, 0.32, 0.14)
     lut.AddRGBPoint(500, 0.219, 0.71, 0.16)
     lut.AddRGBPoint(900, 0.88, 0.72, 0.36)
     lut.AddRGBPoint(1600, 1, 1, 1)
-
-    # lut.SetRange(0, maxAltitude)
-    # Set the number of colors in the lookup table
-    # lut.SetNumberOfTableValues(4)
     lut.Build()
 
     return lut
