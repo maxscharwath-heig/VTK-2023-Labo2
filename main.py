@@ -1,17 +1,10 @@
 import vtk
 import math
 
-#!/usr/bin/env python
-
-# This simple example shows how to do basic rendering and pipeline
-# creation.
-
 # noinspection PyUnresolvedReferences
 import vtkmodules.vtkInteractionStyle
 # noinspection PyUnresolvedReferences
 import vtkmodules.vtkRenderingOpenGL2
-from vtkmodules.vtkCommonColor import vtkNamedColors
-from vtkmodules.vtkFiltersSources import vtkCylinderSource
 from vtkmodules.vtkRenderingCore import (
     vtkActor,
     vtkPolyDataMapper,
@@ -25,46 +18,72 @@ from vtkmodules.vtkIOImage import (
     vtkPNGWriter,
 )
 
-# constants
-
-waterLevel = 370.0
-maxAltitude = 4783.0
+# Constants
+WATER_LEVEL = 370.0
 RADIUS_EARTH = 6371009.0
 
-CENTER_LAT = 46.25
-CENTER_LON = 6.25
+# Latitude of zone to display
+LAT_MIN = 45
+LAT_MAX = 47.5
+
+# Longitude of zone to display
+LON_MIN = 5
+LON_MAX = 7.5
+
+CENTER_LAT = (LAT_MIN + LAT_MAX) / 2
+CENTER_LON = (LON_MIN + LON_MAX) / 2
+
+VTK_DATASET = "altitudes.vtk"
 
 
-def readStructuredGrid():
+def readStructuredGrid(filename):
+    '''
+    Reads the structured grid from the file altitudes.vtk
+    :return: vtkStructuredGrid
+    '''
     reader = vtk.vtkStructuredGridReader()
-    reader.SetFileName("altitudes.vtk")
+    reader.SetFileName(filename)
     reader.Update()
     return reader.GetOutput()
 
 
-def createLUT():
+def createLUT(range):
     lut = vtk.vtkColorTransferFunction()
     lut.AddRGBPoint(0, 0.513, 0.49, 1)  # Lacs
-    lut.AddRGBPoint(1, 0.15, 0.32, 0.14)
-    lut.AddRGBPoint(500, 0.219, 0.71, 0.16)
-    lut.AddRGBPoint(900, 0.88, 0.72, 0.36)
-    lut.AddRGBPoint(2000, 1, 1, 1)
-
-    lut.SetRange(0, maxAltitude)
+    lut.AddRGBPoint(1, 0.15, 0.32, 0.14) # Plaines  (vert foncé)
+    lut.AddRGBPoint(500, 0.219, 0.71, 0.16) # Plaines (vert clair)
+    lut.AddRGBPoint(900, 0.88, 0.72, 0.36) # Terrain escarpé (brun)
+    lut.AddRGBPoint(2000, 1, 1, 1)  # Sommets (neige)
+    lut.SetRange(range)
     lut.Build()
-
     return lut
 
 
-def main():
-    output = readStructuredGrid()
-    colors = vtkNamedColors()
-    lut = createLUT()
+def printImage(ren_window, filename):
+    '''
+    Prints the image of the vtkRenderWindow in a file with given filename
+    :param ren_window: vtkRenderWindow
+    :param filename: string
+    '''
+    image_filter = vtk.vtkWindowToImageFilter()
+    image_filter.SetInput(ren_window)
+    image_filter.Update()
+    writer = vtk.vtkPNGWriter()
+    writer.SetFileName(filename)
+    writer.SetInputData(image_filter.GetOutput())
+    writer.Write()
 
+
+def main():
+    output = readStructuredGrid(VTK_DATASET)
+    altitudes_range = output.GetPointData().GetScalars().GetRange()
+    lut = createLUT(altitudes_range)
+
+    # Create the mapper
     mapper = vtk.vtkDataSetMapper()
     mapper.SetInputData(output)
     mapper.SetLookupTable(lut)
-    mapper.SetScalarRange(output.GetPointData().GetScalars().GetRange())
+    mapper.SetScalarRange(altitudes_range)
 
     # Create the Actor
     actor = vtk.vtkActor()
@@ -87,19 +106,20 @@ def main():
     earth_actor.GetProperty().SetOpacity(0.5)  # Set Earth opacity
 
     # Calculate the camera's center of rotation
-
     center_lat_rad = math.radians(CENTER_LAT)
     center_lon_rad = math.radians(CENTER_LON)
 
-    x_center = RADIUS_EARTH * math.cos(center_lat_rad) * math.sin(center_lon_rad)
-    y_center = RADIUS_EARTH * math.cos(center_lat_rad) * math.cos(center_lon_rad)
+    x_center = RADIUS_EARTH * \
+        math.cos(center_lat_rad) * math.sin(center_lon_rad)
+    y_center = RADIUS_EARTH * \
+        math.cos(center_lat_rad) * math.cos(center_lon_rad)
     z_center = RADIUS_EARTH * math.sin(center_lat_rad)
 
     # Create the Renderer
     renderer = vtk.vtkRenderer()
     renderer.AddActor(actor)
     renderer.AddActor(earth_actor)  # Add Earth sphere actor to the renderer
-    renderer.SetBackground(colors.GetColor3d('Wheat'))
+    renderer.SetBackground(0.96, 0.87, 0.70)
 
     # Set the camera's position, focal point, and view up direction
     camera = renderer.GetActiveCamera()
@@ -109,9 +129,9 @@ def main():
 
     # Create the RendererWindow
     renderer_window = vtk.vtkRenderWindow()
-    renderer_window.SetSize(640, 480)
+    renderer_window.SetSize(1000, 1000)
     renderer_window.AddRenderer(renderer)
-    renderer_window.SetWindowName('ReadstructuredGrid')
+    renderer_window.SetWindowName('VTK - Labo 2')
 
     # Center the window
     screen_size = renderer_window.GetScreenSize()
@@ -122,18 +142,18 @@ def main():
         int((screen_size[1] - window_size[1]) / 2)
     )
 
-    # writer = vtkPNGWriter()
-    # windowto_image_filter = vtkWindowToImageFilter()
-    # windowto_image_filter.SetInput(renderer_window)
-    # windowto_image_filter.SetScale(1)  # image qualit
-    # writer.SetFileName("output.png")
-    # writer.SetInputConnection(windowto_image_filter.GetOutputPort())
-    # writer.Write()
-
     # Create the RendererWindowInteractor and display the vtk_file
     interactor = vtk.vtkRenderWindowInteractor()
     interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
     interactor.SetRenderWindow(renderer_window)
+
+    renderer.ResetCameraClippingRange()
+    renderer_window.Render()
+
+    printImage(renderer_window, "output_level_standard.png")
+
+    printImage(renderer_window, "output_level_370.png")  # TODO
+
     interactor.Initialize()
     interactor.Start()
 
