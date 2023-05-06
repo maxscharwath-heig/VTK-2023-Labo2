@@ -1,9 +1,7 @@
 import vtk
 import math
 
-# noinspection PyUnresolvedReferences
 import vtkmodules.vtkInteractionStyle
-# noinspection PyUnresolvedReferences
 import vtkmodules.vtkRenderingOpenGL2
 from vtkmodules.vtkRenderingCore import (
     vtkActor,
@@ -19,7 +17,7 @@ from vtkmodules.vtkIOImage import (
 )
 
 # Constants
-WATER_LEVEL = 370.0
+WATER_LEVEL = 0.0
 RADIUS_EARTH = 6371009.0
 
 # Latitude of zone to display
@@ -35,6 +33,20 @@ CENTER_LON = (LON_MIN + LON_MAX) / 2
 
 VTK_DATASET = "altitudes.vtk"
 
+CAMERA_DISTANCE = 300000
+
+
+def spherical_to_cartesian(radius: float, latitude: float, longitude: float):
+    '''
+    Translate spherical coordinate to cartesian coordinate
+    '''
+    radians = [math.radians(latitude), math.radians(longitude)]
+
+    x = radius * math.sin(radians[0]) * math.sin(radians[1])
+    y = radius * math.cos(radians[0])
+    z = radius * math.sin(radians[0]) * math.cos(radians[1])
+    return x, y, z
+
 
 def readStructuredGrid(filename):
     '''
@@ -49,11 +61,12 @@ def readStructuredGrid(filename):
 
 def createLUT(range):
     lut = vtk.vtkColorTransferFunction()
-    lut.AddRGBPoint(0, 0.513, 0.49, 1)  # Lacs
-    lut.AddRGBPoint(1, 0.15, 0.32, 0.14) # Plaines  (vert foncé)
-    lut.AddRGBPoint(500, 0.219, 0.71, 0.16) # Plaines (vert clair)
-    lut.AddRGBPoint(900, 0.88, 0.72, 0.36) # Terrain escarpé (brun)
-    lut.AddRGBPoint(2000, 1, 1, 1)  # Sommets (neige)
+    lut.AddRGBPoint(0, 0.25, 0.41, 0.88)  # Lacs (bottom)
+    lut.AddRGBPoint(WATER_LEVEL, 0.25, 0.41, 0.88)  # Lacs (surface)
+    lut.AddRGBPoint(WATER_LEVEL + 1, 0.0, 0.6, 0.27)  # Plaines
+    lut.AddRGBPoint(900, 0.94, 0.85, 0.72)  # Terrain escarpé (brun)
+    lut.AddRGBPoint(2000, 0.8, 0.8, 0.8)  # Haute montagne (neige)
+    lut.AddRGBPoint(3000, 1, 1, 1)  # Pics, sommets (neige)
     lut.SetRange(range)
     lut.Build()
     return lut
@@ -91,6 +104,7 @@ def main():
 
     # Create Earth sphere
     earth_sphere = vtk.vtkSphereSource()
+    earth_sphere.SetCenter(0.0, 0.0, 0.0)
     earth_sphere.SetRadius(RADIUS_EARTH)
     earth_sphere.SetThetaResolution(100)
     earth_sphere.SetPhiResolution(100)
@@ -103,56 +117,50 @@ def main():
     earth_actor = vtk.vtkActor()
     earth_actor.SetMapper(earth_mapper)
     earth_actor.GetProperty().SetColor(0.0, 0.5, 1.0)
-    earth_actor.GetProperty().SetOpacity(0.5)  # Set Earth opacity
-
-    # Calculate the camera's center of rotation
-    center_lat_rad = math.radians(CENTER_LAT)
-    center_lon_rad = math.radians(CENTER_LON)
-
-    x_center = RADIUS_EARTH * \
-        math.cos(center_lat_rad) * math.sin(center_lon_rad)
-    y_center = RADIUS_EARTH * \
-        math.cos(center_lat_rad) * math.cos(center_lon_rad)
-    z_center = RADIUS_EARTH * math.sin(center_lat_rad)
+    earth_actor.GetProperty().SetOpacity(0.9)  # Set Earth opacity
 
     # Create the Renderer
     renderer = vtk.vtkRenderer()
     renderer.AddActor(actor)
-    renderer.AddActor(earth_actor)  # Add Earth sphere actor to the renderer
+    renderer.AddActor(earth_actor)
     renderer.SetBackground(0.96, 0.87, 0.70)
 
-    # Set the camera's position, focal point, and view up direction
+    # Calculate & set camera position
     camera = renderer.GetActiveCamera()
-    camera.SetPosition(x_center, y_center, z_center + RADIUS_EARTH / 2)
-    camera.SetFocalPoint(x_center, y_center, z_center)
-    camera.SetViewUp(0, 1, 0)
+    camera.SetPosition(spherical_to_cartesian(
+        RADIUS_EARTH + CAMERA_DISTANCE, CENTER_LAT, CENTER_LON))
+
+    camera.SetFocalPoint(spherical_to_cartesian(
+        RADIUS_EARTH, CENTER_LAT, CENTER_LON))
+
+    camera.SetViewUp(0, 0, -1)
 
     # Create the RendererWindow
     renderer_window = vtk.vtkRenderWindow()
-    renderer_window.SetSize(1000, 1000)
+    renderer_window.SetSize(1000, 1200)
     renderer_window.AddRenderer(renderer)
     renderer_window.SetWindowName('VTK - Labo 2')
 
-    # Center the window
+    # Center the window on the screen
     screen_size = renderer_window.GetScreenSize()
     window_size = renderer_window.GetSize()
-
     renderer_window.SetPosition(
         int((screen_size[0] - window_size[0]) / 2),
         int((screen_size[1] - window_size[1]) / 2)
     )
 
-    # Create the RendererWindowInteractor and display the vtk_file
+    # Create the RendererWindowInteractor and render the scene
     interactor = vtk.vtkRenderWindowInteractor()
     interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
     interactor.SetRenderWindow(renderer_window)
-
     renderer.ResetCameraClippingRange()
     renderer_window.Render()
 
+    # TODO: Print images of the different water levels
     printImage(renderer_window, "output_level_standard.png")
 
-    printImage(renderer_window, "output_level_370.png")  # TODO
+    WATER_LEVEL = 0.00
+    printImage(renderer_window, "output_level_370.png")
 
     interactor.Initialize()
     interactor.Start()
