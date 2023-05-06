@@ -52,7 +52,6 @@ def is_lake(points, x, y, threshold=1e-6, neighbor_range=2):
     return abs(z - average_height) <= threshold
 
 
-
 maxAltitude = 0
 
 points = []

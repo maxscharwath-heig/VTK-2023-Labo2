@@ -17,7 +17,8 @@ from vtkmodules.vtkIOImage import (
 )
 
 # Constants
-WATER_LEVEL = 0.0
+# Define the wished sea level when using the interactive window
+INTERACTIVE_LEVEL_SEA = 0
 RADIUS_EARTH = 6371009.0
 
 # Latitude of zone to display
@@ -34,6 +35,17 @@ CENTER_LON = (LON_MIN + LON_MAX) / 2
 VTK_DATASET = "altitudes.vtk"
 
 CAMERA_DISTANCE = 300000
+
+# colors
+colors = {
+    'lake': [0.25, 0.41, 0.88],
+    'ground': [0.0, 0.6, 0.27],
+    'hills': [0.94, 0.85, 0.72],
+    'mountains': [0.8, 0.8, 0.8],
+    'peaks': [1.0, 1.0, 1.0],
+    'earth': [0.0, 0.5, 1.0],
+    'background': [0.96, 0.87, 0.70],
+}
 
 
 def spherical_to_cartesian(radius: float, latitude: float, longitude: float):
@@ -59,14 +71,14 @@ def readStructuredGrid(filename):
     return reader.GetOutput()
 
 
-def createLUT(range):
+def createLUT(range, sea_level=0):
     lut = vtk.vtkColorTransferFunction()
-    lut.AddRGBPoint(0, 0.25, 0.41, 0.88)  # Lacs (bottom)
-    lut.AddRGBPoint(WATER_LEVEL, 0.25, 0.41, 0.88)  # Lacs (surface)
-    lut.AddRGBPoint(WATER_LEVEL + 1, 0.0, 0.6, 0.27)  # Plaines
-    lut.AddRGBPoint(900, 0.94, 0.85, 0.72)  # Terrain escarpé (brun)
-    lut.AddRGBPoint(2000, 0.8, 0.8, 0.8)  # Haute montagne (neige)
-    lut.AddRGBPoint(3000, 1, 1, 1)  # Pics, sommets (neige)
+    lut.AddRGBPoint(0, *colors["lake"])  # Lacs (bottom)
+    lut.AddRGBPoint(sea_level, *colors["lake"])  # Lacs (surface)
+    lut.AddRGBPoint(sea_level + 1, *colors["ground"])  # Plaines
+    lut.AddRGBPoint(900, *colors["hills"])  # Terrain escarpé (brun)
+    lut.AddRGBPoint(2000, *colors["mountains"])  # Haute montagne (neige)
+    lut.AddRGBPoint(3000, *colors["peaks"])  # Pics, sommets (neige)
     lut.SetRange(range)
     lut.Build()
     return lut
@@ -87,16 +99,14 @@ def printImage(ren_window, filename):
     writer.Write()
 
 
-def main():
-    output = readStructuredGrid(VTK_DATASET)
-    altitudes_range = output.GetPointData().GetScalars().GetRange()
-    lut = createLUT(altitudes_range)
-
+def generateRender(data, lut):
+    '''
+    Generates a render window from a structured grid and a lookup table
+    '''
     # Create the mapper
     mapper = vtk.vtkDataSetMapper()
-    mapper.SetInputData(output)
+    mapper.SetInputData(data)
     mapper.SetLookupTable(lut)
-    mapper.SetScalarRange(altitudes_range)
 
     # Create the Actor
     actor = vtk.vtkActor()
@@ -116,14 +126,14 @@ def main():
     # Create Earth sphere actor
     earth_actor = vtk.vtkActor()
     earth_actor.SetMapper(earth_mapper)
-    earth_actor.GetProperty().SetColor(0.0, 0.5, 1.0)
-    earth_actor.GetProperty().SetOpacity(0.9)  # Set Earth opacity
+    earth_actor.GetProperty().SetColor(colors["earth"])
+    earth_actor.GetProperty().SetOpacity(0.9)
 
     # Create the Renderer
     renderer = vtk.vtkRenderer()
     renderer.AddActor(actor)
     renderer.AddActor(earth_actor)
-    renderer.SetBackground(0.96, 0.87, 0.70)
+    renderer.SetBackground(colors["background"])
 
     # Calculate & set camera position
     camera = renderer.GetActiveCamera()
@@ -141,6 +151,29 @@ def main():
     renderer_window.AddRenderer(renderer)
     renderer_window.SetWindowName('VTK - Labo 2')
 
+    renderer.ResetCameraClippingRange()
+
+    return renderer_window
+
+
+def main():
+    output = readStructuredGrid(VTK_DATASET)
+    altitudes_range = output.GetPointData().GetScalars().GetRange()
+    #
+    # Render of the sea level at 370m, to an image
+    #
+    apocalypse_level = 370.0
+    lut = createLUT(altitudes_range, apocalypse_level)
+    renderer_window = generateRender(output, lut)
+    printImage(renderer_window, "output_level_370.png")
+
+    #
+    # Render of the standard sea level, to an image and to an interactive window
+    #
+    lut = createLUT(altitudes_range, INTERACTIVE_LEVEL_SEA)
+    renderer_window = generateRender(output, lut)
+    printImage(renderer_window, "output_level_standard.png")
+
     # Center the window on the screen
     screen_size = renderer_window.GetScreenSize()
     window_size = renderer_window.GetSize()
@@ -153,15 +186,7 @@ def main():
     interactor = vtk.vtkRenderWindowInteractor()
     interactor.SetInteractorStyle(vtk.vtkInteractorStyleTrackballCamera())
     interactor.SetRenderWindow(renderer_window)
-    renderer.ResetCameraClippingRange()
     renderer_window.Render()
-
-    # TODO: Print images of the different water levels
-    printImage(renderer_window, "output_level_standard.png")
-
-    WATER_LEVEL = 0.00
-    printImage(renderer_window, "output_level_370.png")
-
     interactor.Initialize()
     interactor.Start()
 
