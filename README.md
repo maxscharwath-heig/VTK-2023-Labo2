@@ -24,6 +24,8 @@ Ce programme générera deux images:
 
 La fenêtre interactive s'ouvrira en affichant la carte avec le niveau de la mer défini par la valeur de `INTERACTIVE_LEVEL_SEA`.
 
+La valeur `INTERACTIVE_LEVEL_SEA` est définie dans le fichier de constantes `constants.py`.
+
 ## Résultats
 
 Voici un exemple des deux cartes générées:

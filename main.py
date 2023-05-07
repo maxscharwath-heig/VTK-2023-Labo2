@@ -1,5 +1,8 @@
+# VTK - Labo 2
+# Nicolas Crausaz & Maxime Scharwath
+# Main program rendering an topographic map of (a part of) Switzerland
+
 import vtk
-import math
 
 import vtkmodules.vtkInteractionStyle
 import vtkmodules.vtkRenderingOpenGL2
@@ -16,18 +19,13 @@ from vtkmodules.vtkIOImage import (
     vtkPNGWriter,
 )
 
+import constants as cst
+import helpers as hlp
+
 # Constants
-INTERACTIVE_LEVEL_SEA = 0
-RADIUS_EARTH = 6371009.0
-
-CENTER_LAT = 46.25
-CENTER_LON = 6.25
-
 VTK_DATASET = "altitudes.vtk"
 
-CAMERA_DISTANCE = 300000
-
-colors = {
+COLORS = {
     'lake': [0.25, 0.41, 0.88],
     'ground': [0.0, 0.6, 0.27],
     'hills': [0.94, 0.85, 0.72],
@@ -38,16 +36,13 @@ colors = {
 }
 
 
-def spherical_to_cartesian(radius: float, latitude: float, longitude: float):
-    radians = [math.radians(latitude), math.radians(longitude)]
-
-    x = radius * math.sin(radians[0]) * math.sin(radians[1])
-    y = radius * math.cos(radians[0])
-    z = radius * math.sin(radians[0]) * math.cos(radians[1])
-    return x, y, z
-
-
 def read_structured_grid(filename):
+    '''
+    Read a VTK structured grid from a file
+    :param filename: Name of the file to read
+    :return: The VTK structured grid
+    '''
+
     reader = vtk.vtkStructuredGridReader()
     reader.SetFileName(filename)
     reader.Update()
@@ -55,19 +50,31 @@ def read_structured_grid(filename):
 
 
 def create_lut(range, sea_level=0):
+    '''
+    Create a color lookup table
+    :param range: Range of the altitude
+    :param sea_level: Altitude of the sea level
+    :return: The color lookup table
+    '''
+
     lut = vtk.vtkColorTransferFunction()
-    lut.AddRGBPoint(0, *colors["lake"])
-    lut.AddRGBPoint(sea_level, *colors["lake"])
-    lut.AddRGBPoint(sea_level + 1, *colors["ground"])
-    lut.AddRGBPoint(900, *colors["hills"])
-    lut.AddRGBPoint(2000, *colors["mountains"])
-    lut.AddRGBPoint(3000, *colors["peaks"])
+    lut.AddRGBPoint(0, *COLORS["lake"])
+    lut.AddRGBPoint(sea_level, *COLORS["lake"])
+    lut.AddRGBPoint(sea_level + 1, *COLORS["ground"])
+    lut.AddRGBPoint(900, *COLORS["hills"])
+    lut.AddRGBPoint(2000, *COLORS["mountains"])
+    lut.AddRGBPoint(3000, *COLORS["peaks"])
     lut.SetRange(range)
     lut.Build()
     return lut
 
 
 def print_image(ren_window, filename):
+    '''
+    Print the content of a VTK render window to a file
+    :param ren_window: The VTK render window
+    :param filename: The name of the file
+    '''
     image_filter = vtk.vtkWindowToImageFilter()
     image_filter.SetInput(ren_window)
     image_filter.Update()
@@ -78,6 +85,11 @@ def print_image(ren_window, filename):
 
 
 def load_texture(filename: str):
+    '''
+    Load a texture from a file
+    :param filename: The name of the file
+    :return: The VTK texture
+    '''
     reader_factory = vtk.vtkImageReader2Factory()
     texture_file = reader_factory.CreateImageReader2(filename)
     texture_file.SetFileName(filename)
@@ -91,16 +103,23 @@ def load_texture(filename: str):
     return texture
 
 
-def generate_render(data, lut, earth_texture):
+def generate_render(data, lut):
+    '''
+    Generate a VTK render window
+    :param data: The VTK structured grid
+    :param lut: The color lookup table
+    :return: The VTK render window
+    '''
+    # Create the mapper and actor for the topographic map
     mapper = vtk.vtkDataSetMapper()
     mapper.SetInputData(data)
     mapper.SetLookupTable(lut)
+    topo_map = vtk.vtkActor()
+    topo_map.SetMapper(mapper)
 
-    actor = vtk.vtkActor()
-    actor.SetMapper(mapper)
-
+    # Create the sphere representing the earth
     earth_sphere = vtk.vtkTexturedSphereSource()
-    earth_sphere.SetRadius(RADIUS_EARTH)
+    earth_sphere.SetRadius(cst.RADIUS_EARTH)
     earth_sphere.SetThetaResolution(100)
     earth_sphere.SetPhiResolution(100)
 
@@ -111,29 +130,30 @@ def generate_render(data, lut, earth_texture):
     earth_actor.SetOrientation(0, 87.1, 90)
     earth_actor.SetOrigin(0, 0, 0)
     earth_actor.SetMapper(earth_mapper)
+    earth_texture = load_texture("./assets/8k_earth_daymap.png")
     earth_actor.SetTexture(earth_texture)
     earth_actor.GetProperty().SetSpecular(0.5)
     earth_actor.GetProperty().SetSpecularPower(50)
 
+    # Create the renderer
     renderer = vtk.vtkRenderer()
-    renderer.AddActor(actor)
+    renderer.AddActor(topo_map)
     renderer.AddActor(earth_actor)
-    renderer.SetBackground(colors["background"])
+    renderer.SetBackground(COLORS["background"])
 
+    # Set the camera position and focal
     camera = renderer.GetActiveCamera()
-    camera.SetPosition(spherical_to_cartesian(
-        RADIUS_EARTH + CAMERA_DISTANCE, CENTER_LAT, CENTER_LON))
+    camera.SetPosition(hlp.spherical_to_cartesian(
+        cst.RADIUS_EARTH + cst.CAMERA_DISTANCE, cst.CENTER_LAT, cst.CENTER_LON))
 
-    camera.SetFocalPoint(spherical_to_cartesian(
-        RADIUS_EARTH, CENTER_LAT, CENTER_LON))
+    camera.SetFocalPoint(hlp.spherical_to_cartesian(
+        cst.RADIUS_EARTH, cst.CENTER_LAT, cst.CENTER_LON))
 
-    camera.SetViewUp(0, 0, -1)
-
+    # Create the render window
     renderer_window = vtk.vtkRenderWindow()
     renderer_window.SetSize(1000, 1200)
     renderer_window.AddRenderer(renderer)
     renderer_window.SetWindowName('VTK - Labo 2')
-
     renderer.ResetCameraClippingRange()
 
     return renderer_window
@@ -153,14 +173,15 @@ def main():
     output = read_structured_grid(VTK_DATASET)
     altitudes_range = output.GetPointData().GetScalars().GetRange()
 
+    # Render of the sea level at 370m, to an image
     apocalypse_level = 370.0
     lut = create_lut(altitudes_range, apocalypse_level)
-    earth_texture = load_texture("./assets/8k_earth_daymap.png")
-    renderer_window = generate_render(output, lut, earth_texture)
+    renderer_window = generate_render(output, lut)
     print_image(renderer_window, "output_level_370.png")
 
-    lut = create_lut(altitudes_range, INTERACTIVE_LEVEL_SEA)
-    renderer_window = generate_render(output, lut, earth_texture)
+    # Render of the standard sea level, to an image and interactive window
+    lut = create_lut(altitudes_range, cst.INTERACTIVE_LEVEL_SEA)
+    renderer_window = generate_render(output, lut)
     print_image(renderer_window, "output_level_standard.png")
 
     screen_size = renderer_window.GetScreenSize()
