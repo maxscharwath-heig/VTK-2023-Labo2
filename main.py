@@ -158,17 +158,6 @@ def generate_render(data, lut):
 
     return renderer_window
 
-
-class TimerCallback(vtk.vtkCommand):
-    def __init__(self, actor, renderer_window):
-        self.actor = actor
-        self.renderer_window = renderer_window
-
-    def Execute(self, caller, event, calldata):
-        self.actor.RotateZ(0.1)  # Adjust the rotation speed here
-        self.renderer_window.Render()
-
-
 def main():
     output = read_structured_grid(VTK_DATASET)
     altitudes_range = output.GetPointData().GetScalars().GetRange()
