@@ -1,5 +1,7 @@
 # VTK - Labo 2 - Carte topographique en relief
 
+> Nicolas Crausaz & Maxime Scharwath
+
 Le but de ce laboratoire est de générer une carte topographique en couleur et en relief à partir des données altimétriques brutes. Ces données sont fournies en annexe sous la forme d'un fichier texte contenant 3001 x 3001 altitudes (en mètres) échantillonnant de manière régulière la zone comprise entre 45 et 47.5 degrés de latitude nord, et 5 et 7.5 degrés de longitude est.
 
 ## Utilisation
